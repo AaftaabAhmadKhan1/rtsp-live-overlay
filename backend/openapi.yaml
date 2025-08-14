@@ -1,0 +1,162 @@
+openapi: 3.0.3
+info:
+  title: RTSP Overlay API
+  version: 1.0.0
+servers:
+  - url: http://localhost:5001
+paths:
+  /api/streams/start:
+    post:
+      summary: Start ingesting an RTSP stream and expose HLS
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rtspUrl: { type: string, example: "rtsp://..." }
+              required: [rtspUrl]
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  streamId: { type: string }
+                  hlsUrl: { type: string, example: "/streams/<id>/index.m3u8" }
+
+  /api/streams/status/{streamId}:
+    get:
+      summary: Check ffmpeg status
+      parameters:
+        - in: path
+          name: streamId
+          schema: { type: string }
+          required: true
+      responses:
+        '200':
+          description: OK
+
+  /api/streams/stop/{streamId}:
+    delete:
+      summary: Stop ffmpeg and delete HLS dir
+      parameters:
+        - in: path
+          name: streamId
+          schema: { type: string }
+          required: true
+      responses:
+        '200':
+          description: OK
+
+  /api/uploads:
+    post:
+      summary: Upload an image (logo)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url: { type: string, example: "/uploads/logo.png" }
+
+  /api/overlays:
+    get:
+      summary: List overlays
+      parameters:
+        - in: query
+          name: userId
+          schema: { type: string }
+        - in: query
+          name: streamId
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+    post:
+      summary: Create overlay
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Overlay'
+      responses:
+        '201': { description: Created }
+
+  /api/overlays/{id}:
+    get:
+      summary: Get overlay by id
+      parameters:
+        - in: path
+          name: id
+          schema: { type: string }
+          required: true
+      responses:
+        '200': { description: OK }
+        '404': { description: Not Found }
+    put:
+      summary: Update overlay
+      parameters:
+        - in: path
+          name: id
+          schema: { type: string }
+          required: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Overlay'
+      responses:
+        '200': { description: OK }
+    delete:
+      summary: Delete overlay
+      parameters:
+        - in: path
+          name: id
+          schema: { type: string }
+          required: true
+      responses:
+        '200': { description: OK }
+
+components:
+  schemas:
+    OverlayItem:
+      type: object
+      properties:
+        id: { type: string }
+        type: { type: string, enum: [text, image] }
+        content: { type: string }
+        x: { type: number, minimum: 0, maximum: 1 }
+        y: { type: number, minimum: 0, maximum: 1 }
+        width: { type: number, minimum: 0, maximum: 1 }
+        height: { type: number, minimum: 0, maximum: 1 }
+        rotation: { type: number }
+        opacity: { type: number, minimum: 0, maximum: 1 }
+        zIndex: { type: integer }
+        style: { type: object, additionalProperties: { type: string } }
+      required: [id, type, content, x, y, width, height]
+    Overlay:
+      type: object
+      properties:
+        name: { type: string }
+        streamId: { type: string, nullable: true }
+        userId: { type: string, nullable: true }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/OverlayItem' }
